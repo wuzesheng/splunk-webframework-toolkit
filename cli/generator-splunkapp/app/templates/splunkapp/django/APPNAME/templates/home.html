@@ -1,0 +1,41 @@
+{% extends "splunkdj:base_with_app_bar.html" %}
+
+{% load splunkmvc %}
+
+{% block title %}Home Page{% endblock title %}
+
+{% block css %}
+    <style>
+        .main-area {
+            border: 1px solid black;
+            margin: 0px auto;
+            margin-top: 30px;
+            margin-bottom: 30px;
+            padding: 10px;
+            width: 300px;
+        }
+    </style>
+{% endblock css %}
+
+{% block content %}
+    <div>
+        <div class="main-area">
+            <p>
+                This is the home page of your app.
+            </p>
+            <p>
+                You can customize it by editing the template file at:
+                <code><%= appname %>/django/<%= appname %>/templates/home.html</code>
+            </p>
+            <p class="muted">
+                You should also look in the JavaScript console...
+            </p>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block js %}
+    <script>
+        console.log("Custom JavaScript goes here!");
+    </script>
+{% endblock js %}

@@ -1,0 +1,16 @@
+<!-- Contents of the app bar -->
+<nav>
+    <view name="default" default="true"/>
+    
+    <!-- Standalone menus -->
+    <a href="/dj/redirector/<%= appname %>/home">Home</a>
+    <a href="/dj/redirector/<%= appname %>/template?name=other">Other</a>
+    
+    <!-- Menus containing items -->
+    <!--
+    <collection label="Views">
+        <a href="/dj/redirector/<%= appname %>/home">Home</a>
+        <a href="/dj/redirector/<%= appname %>/template?name=other">Other</a>
+    </collection>
+      -->
+</nav>

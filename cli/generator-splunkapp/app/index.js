@@ -20,32 +20,39 @@ var SplunkappGenerator = module.exports = function SplunkappGenerator(args, opti
 
 util.inherits(SplunkappGenerator, yeoman.generators.Base);
 
-SplunkappGenerator.prototype.askFor = function askFor() {
-  var cb = this.async();
-
-  var prompts = [/*{
-    type: 'confirm',
-    name: 'someOption',
-    message: 'Would you like to enable this option?',
-    default: true
-  }*/];
-
-  this.prompt(prompts, function (props) {
-    //this.someOption = props.someOption;
-
-    cb();
-  }.bind(this));
-};
+// === Tasks ===
 
 SplunkappGenerator.prototype.app = function app() {
-  // NOTE: Both of these are required by the Yeoman toolchain
+  // Install files required by Yeoman toolchain
+  // TODO: Try to find a way to eliminate these files.
+  //       Perhaps by eliminating the installDependencies step.
   this.copy('_package.json', 'package.json');
   this.copy('_bower.json', 'bower.json');
   
-  this.template('plain.txt', 'plain.txt');
-  this.template('substituted.txt', 'substituted.txt');
-};
-
-SplunkappGenerator.prototype.projectfiles = function projectfiles() {
-  // No project files
+  // Template-substitute and install Splunk app files...
+  [
+    'appserver/templates/redirect.tmpl',
+    'bin/README',
+    'default/app.conf',
+    'default/data/ui/nav/default.xml',
+    'default/data/ui/views/default.xml',
+    'README'
+  ].forEach(function(filePath) {
+    this.template('splunkapp/' + filePath, filePath);
+  }, this);
+  
+  // ...including app files whose file paths require substitution
+  [
+    '__init__.py',
+    'templates/home.html',
+    'templates/other.html',
+    'templatetags/__init__.py',
+    'tests.py',
+    'urls.py',
+    'views.py'
+  ].forEach(function(filePath) {
+    this.template(
+      'splunkapp/' + 'django/APPNAME/' + filePath,
+      'django/' + this.appname + '/' + filePath);
+  }, this);
 };
