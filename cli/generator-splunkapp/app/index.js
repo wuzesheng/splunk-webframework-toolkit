@@ -19,32 +19,31 @@ util.inherits(SplunkappGenerator, yeoman.generators.Base);
 SplunkappGenerator.prototype.askFor = function askFor() {
   var cb = this.async();
 
-  // have Yeoman greet the user.
-  console.log(this.yeoman);
-
-  var prompts = [{
+  var prompts = [/*{
     type: 'confirm',
     name: 'someOption',
     message: 'Would you like to enable this option?',
     default: true
-  }];
+  }*/];
 
   this.prompt(prompts, function (props) {
-    this.someOption = props.someOption;
+    //this.someOption = props.someOption;
 
     cb();
   }.bind(this));
 };
 
 SplunkappGenerator.prototype.app = function app() {
-  this.mkdir('app');
-  this.mkdir('app/templates');
-
+  // NOTE: Both of these are required by the Yeoman toolchain
   this.copy('_package.json', 'package.json');
   this.copy('_bower.json', 'bower.json');
+  
+  this.template('plain.txt', 'plain.txt');
+  this.template('substituted.txt', 'substituted.txt', {
+    app: '<this app>'
+  });
 };
 
 SplunkappGenerator.prototype.projectfiles = function projectfiles() {
-  this.copy('editorconfig', '.editorconfig');
-  this.copy('jshintrc', '.jshintrc');
+  // No project files
 };
