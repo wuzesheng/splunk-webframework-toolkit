@@ -6,6 +6,10 @@ var yeoman = require('yeoman-generator');
 
 var SplunkappGenerator = module.exports = function SplunkappGenerator(args, options, config) {
   yeoman.generators.Base.apply(this, arguments);
+  
+  // Determine name of Splunk app being created
+  this.argument('appname', { type: String, required: false });
+  this.appname = this.appname || path.basename(process.cwd());
 
   this.on('end', function () {
     this.installDependencies({ skipInstall: options['skip-install'] });
@@ -39,9 +43,7 @@ SplunkappGenerator.prototype.app = function app() {
   this.copy('_bower.json', 'bower.json');
   
   this.template('plain.txt', 'plain.txt');
-  this.template('substituted.txt', 'substituted.txt', {
-    app: '<this app>'
-  });
+  this.template('substituted.txt', 'substituted.txt');
 };
 
 SplunkappGenerator.prototype.projectfiles = function projectfiles() {
