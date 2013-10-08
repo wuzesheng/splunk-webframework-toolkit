@@ -1,3 +1,4 @@
+# Python
 *.py[cod]
 
 # C extensions
@@ -34,4 +35,9 @@ nosetests.xml
 .project
 .pydevproject
 
+# OS X
 .DS_Store
+
+# Splunk apps
+local
+metadata
