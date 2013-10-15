@@ -1,0 +1,42 @@
+{
+  "name": "grunt-splunk",
+  "description": "Manipulate Web Framework apps.",
+  "version": "0.1.0",
+  "homepage": "https://github.com/splunk/grunt-splunk",
+  "author": {
+    "name": "Splunk",
+    "email": "devinfo@splunk.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/splunk/grunt-splunk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/splunk/grunt-splunk/issues"
+  },
+  "licenses": [
+    {
+      "type": "Apache",
+      "url": "https://github.com/splunk/grunt-splunk/blob/master/LICENSE-Apache"
+    }
+  ],
+  "main": "Gruntfile.js",
+  "engines": {
+    "node": ">= 0.8.0"
+  },
+  "scripts": {
+    "test": "grunt test"
+  },
+  "devDependencies": {
+    "grunt-contrib-jshint": "~0.6.0",
+    "grunt-contrib-clean": "~0.4.0",
+    "grunt-contrib-nodeunit": "~0.2.0",
+    "grunt": "~0.4.1"
+  },
+  "peerDependencies": {
+    "grunt": "~0.4.1"
+  },
+  "keywords": [
+    "gruntplugin"
+  ]
+}
