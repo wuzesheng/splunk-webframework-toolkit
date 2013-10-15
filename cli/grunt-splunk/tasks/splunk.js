@@ -1,5 +1,6 @@
 module.exports = function(grunt) {
     var _ = require('underscore');
+    var child_process = require('child_process');
     var fs = require('fs');
     var inquirer = require('inquirer');
     var path = require('path');
@@ -34,15 +35,23 @@ module.exports = function(grunt) {
     grunt.registerTask('splunk', 'Manipulate Web Framework apps.', function() {
         var args = arguments;   // allow use of command arguments in callbacks
         
+        var isInAppContainer = !!grunt.config(
+            ['splunk', 'options', 'appContainer']);
+        
         if (args.length <= 1) {
             printHelp();
             return false;
         } else if (args[0] === 'view') {
+            if (isInAppContainer) {
+                grunt.log.error('Must in app directory to manipulate "view" objects.');
+                return false;
+            }
+            
             if (args[1] === 'create' && (args.length <= 3)) {
                 var done = this.async();
                 
                 var viewName;
-                askForViewNameIfMissing('View name:', args[2], function(inputViewName) {
+                askForIfMissing('View name:', args[2], function(inputViewName) {
                     viewName = inputViewName;
                     askForBaseTemplateName();
                 });
@@ -74,17 +83,17 @@ module.exports = function(grunt) {
                         createView(viewName, response.baseTemplateName, done);
                     });
                 };
-            } else if (args[1] === 'delete') {
+            } else if (args[1] === 'delete' && (args.length <= 3)) {
                 var done = this.async();
                 
-                askForViewNameIfMissing('View name:', args[2], function(viewName) {
+                askForIfMissing('View name:', args[2], function(viewName) {
                     deleteView(viewName, done);
                 });
-            } else if (args[1] === 'rename') {
+            } else if (args[1] === 'rename' && (args.length <= 4)) {
                 var done = this.async();
                 
-                askForViewNameIfMissing('Old view name:', args[2], function(oldViewName) {
-                    askForViewNameIfMissing('New view name:', args[3], function(newViewName) {
+                askForIfMissing('Old view name:', args[2], function(oldViewName) {
+                    askForIfMissing('New view name:', args[3], function(newViewName) {
                         renameView(oldViewName, newViewName, done);
                     });
                 });
@@ -94,9 +103,36 @@ module.exports = function(grunt) {
                 return false;
             }
         } else if (args[0] === 'app') {
-            // TODO: implement
-            grunt.log.error('Not yet implemented.');
-            return false;
+            if (!isInAppContainer) {
+                grunt.log.error('Must be in app container directory to manipulate "app" objects.');
+                return false;
+            }
+            
+            if (args[1] === 'create' && (args.length <= 3)) {
+                var done = this.async();
+                
+                askForIfMissing('App name:', args[2], function(appName) {
+                    createApp(appName, done);
+                });
+            } else if (args[1] === 'delete' && (args.length <= 3)) {
+                var done = this.async();
+                
+                askForIfMissing('App name:', args[2], function(appName) {
+                    deleteApp(appName, done);
+                });
+            } else if (args[1] === 'rename' && (args.length <= 4)) {
+                var done = this.async();
+                
+                askForIfMissing('Old app name:', args[2], function(oldAppName) {
+                    askForIfMissing('New app name:', args[3], function(newAppName) {
+                        renameApp(oldAppName, newAppName, done);
+                    });
+                });
+            } else {
+                grunt.log.error('Unrecognized command for "app" object: ' + args[1]);
+                printHelp();
+                return false;
+            }
         } else {
             grunt.log.error('Unrecognized object type: ' + args[0]);
             printHelp();
@@ -109,7 +145,7 @@ module.exports = function(grunt) {
      * @param viewName  Default view name, or undefined.
      * @param callback  Function that takes (viewName).
      */
-    function askForViewNameIfMissing(prompt, viewName, callback) {
+    function askForIfMissing(prompt, viewName, callback) {
         if (viewName === undefined) {
             inquirer.prompt({
                 type: 'input',
@@ -222,6 +258,45 @@ module.exports = function(grunt) {
         done();
     }
     
+    function createApp(appName, done) {
+        if (fs.existsSync(appName)) {
+            grunt.log.error('App "' + appName + '" already exists.');
+            done(false);
+            return;
+        }
+        
+        fs.mkdirSync(appName);
+        process.chdir(appName);
+        child_process.exec('yo splunkapp', function(error, stdout, stderr) {
+            // TODO: Emit the process output as it is printed instead of
+            //       waiting for the process to terminate.
+            if (stdout) {
+                grunt.log.writeln(stdout);
+            }
+            if (stderr) {
+                grunt.log.error(stderr);
+            }
+            
+            done(error === null);
+        });
+    }
+    
+    function deleteApp(appName, done) {
+        if (!fs.existsSync(appName)) {
+            grunt.log.error('App "' + appName + '" not found.');
+            done(false);
+            return;
+        }
+        
+        deleteRecursiveSync(appName);
+        
+        done();
+    }
+    
+    function renameApp(oldAppName, newAppName, done) {
+        done();
+    }
+    
     // === Utility ===
     
     function getCurrentAppName() {
@@ -238,5 +313,16 @@ module.exports = function(grunt) {
         return path.join(
             'django', getCurrentAppName(), 'templates',
             viewName + '.html');
+    }
+    
+    function deleteRecursiveSync(itemPath) {
+        if (fs.statSync(itemPath).isDirectory()) {
+            _.each(fs.readdirSync(itemPath), function(childItemName) {
+                deleteRecursiveSync(path.join(itemPath, childItemName));
+            });
+            fs.rmdirSync(itemPath);
+        } else {
+            fs.unlinkSync(itemPath);
+        }
     }
 };
