@@ -166,8 +166,9 @@ module.exports = function(grunt) {
         var helpLines = [
             'Syntax: grunt splunk:<object>:<command>',
             '',
-            '    splunk:app:delete - Delete the current app.',
-            '    splunk:app:rename:<newapp> - Rename the current app to <newapp>.',
+            '    splunk:app:create:<appname> - Create a new app.',
+            '    splunk:app:delete:<appname> - Deletes the app <appname>.',
+            '    splunk:app:rename:<oldapp>:<newapp> - Rename the app <oldapp> to <newapp>.',
             '    splunk:view:create:<viewname> - Creates a new view <viewname>.',
             '    splunk:view:delete:<viewname> - Deletes the view <viewname>.',
             '    splunk:view:rename:<oldview>:<newview> - Renames the view <oldview> to <newview>.',
