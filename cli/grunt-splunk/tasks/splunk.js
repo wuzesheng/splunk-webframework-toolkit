@@ -294,6 +294,23 @@ module.exports = function(grunt) {
     }
     
     function renameApp(oldAppName, newAppName, done) {
+        if (!fs.existsSync(oldAppName)) {
+            grunt.log.error('App "' + oldAppName + '" not found.');
+            done(false);
+            return;
+        }
+        
+        if (fs.existsSync(newAppName)) {
+            grunt.log.error('App "' + newAppName + '" already exists.');
+            done(false);
+            return;
+        }
+        
+        // TODO: implement
+        grunt.log.error('Not yet implemented.');
+        done(false);
+        return;
+        
         done();
     }
     
