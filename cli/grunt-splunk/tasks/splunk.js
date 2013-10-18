@@ -4,6 +4,7 @@ module.exports = function(grunt) {
     var fs = require('fs');
     var inquirer = require('inquirer');
     var path = require('path');
+    var splunkjs = require('splunk-sdk');
     
     // TODO: Extract to separate file for easier editing
     var VIEW_TEMPLATE_TEMPLATE = 
@@ -130,6 +131,57 @@ module.exports = function(grunt) {
                 });
             } else {
                 grunt.log.error('Unrecognized command for "app" object: ' + args[1]);
+                printHelp();
+                return false;
+            }
+        } else if (args[0] === 'reload') {
+            if (args[1] === 'app' && (args.length === 2)) {
+                if (isInAppContainer) {
+                    grunt.log.error('Must in app directory to perform "reload:app".');
+                    return false;
+                }
+                
+                // Locate splunkd
+                var serviceArgs = grunt.config(['splunk', 'options', 'splunkd']);
+                if (!serviceArgs) {
+                    grunt.log.error('Gruntfile.js: Missing configuration for: splunk.options.splunkd');
+                    return false;
+                }
+                
+                // Locate splunk CLI
+                if (!process.env.SPLUNK_HOME) {
+                    grunt.log.error('SPLUNK_HOME environment variable is not set.');
+                    grunt.log.error('This should be set to the path to your Splunk installation.');
+                    grunt.log.error('For example: export SPLUNK_HOME=/Applications/splunk');
+                    return false;
+                }
+                if (!fs.existsSync(process.env.SPLUNK_HOME) ||
+                    !fs.statSync(process.env.SPLUNK_HOME).isDirectory())
+                {
+                    grunt.log.error('SPLUNK_HOME does not point to a valid directory.');
+                    return false;
+                }
+                var splunkCommandPath = path.join(process.env.SPLUNK_HOME, 'bin', 'splunk');
+                if (!fs.existsSync(splunkCommandPath)) {
+                    grunt.log.error('SPLUNK_HOME does not point to a valid Splunk installation.');
+                    return false;
+                }
+                
+                var done = this.async();
+                
+                // Poke /services/apps/local/_reload
+                var service = new splunkjs.Service(serviceArgs);
+                service.apps().post('_reload', {}, function(err, response) {
+                    if (err) {
+                        done(err);
+                        return;
+                    }
+                    
+                    // Restart splunkweb
+                    child_process.execFile(splunkCommandPath, ['restartss'], {}, done);
+                });
+            } else {
+                grunt.log.error('Unrecognized subcommand for "reload" command: ' + args[1]);
                 printHelp();
                 return false;
             }
