@@ -34,163 +34,175 @@ module.exports = function(grunt) {
         '';
     
     grunt.registerTask('splunk', 'Manipulate Web Framework apps.', function() {
-        var args = arguments;   // allow use of command arguments in callbacks
+        var done = this.async();
         
-        var isInAppContainer = !!grunt.config(
-            ['splunk', 'options', 'appContainer']);
-        
+        execCommand(arguments, done);
+    });
+
+    // === Argument Parsing ===
+    
+    function execCommand(args, done) {
         if (args.length <= 1) {
             printHelp();
-            return false;
+            done(false);
+            return;
         } else if (args[0] === 'view') {
-            if (isInAppContainer) {
-                grunt.log.error('Must in app directory to manipulate "view" objects.');
-                return false;
-            }
-            
-            if (args[1] === 'create' && (args.length <= 3)) {
-                var done = this.async();
-                
-                var viewName;
-                askForIfMissing('View name:', args[2], function(inputViewName) {
-                    viewName = inputViewName;
-                    askForBaseTemplateName();
-                });
-                
-                function askForBaseTemplateName() {
-                    inquirer.prompt({
-                        // NOTE: Using this type instead of 'list' because
-                        //       probably easier to automate externally.
-                        type: 'rawlist',
-                        name: 'baseTemplateName',
-                        message: 'Which base template should be used:',
-                        choices: [
-                            {
-                                name: 'Navigation bar, header, and footer.',
-                                value: 'base_with_app_bar'
-                            }, {
-                                name: 'Header and footer.',
-                                value: 'base_with_account_bar'
-                            }, {
-                                name: 'Blank page.',
-                                value: 'base_with_basic_styles'
-                            }
-                        ],
-                        default: 'base_with_app_bar'
-                    }, function(response) {
-                        // Spacer between questions and task output
-                        grunt.log.writeln('');
-                        
-                        createView(viewName, response.baseTemplateName, done);
-                    });
-                };
-            } else if (args[1] === 'delete' && (args.length <= 3)) {
-                var done = this.async();
-                
-                askForIfMissing('View name:', args[2], function(viewName) {
-                    deleteView(viewName, done);
-                });
-            } else if (args[1] === 'rename' && (args.length <= 4)) {
-                var done = this.async();
-                
-                askForIfMissing('Old view name:', args[2], function(oldViewName) {
-                    askForIfMissing('New view name:', args[3], function(newViewName) {
-                        renameView(oldViewName, newViewName, done);
-                    });
-                });
-            } else {
-                grunt.log.error('Unrecognized command for "view" object: ' + args[1]);
-                printHelp();
-                return false;
-            }
+            execViewCommand(args, done);
         } else if (args[0] === 'app') {
-            if (!isInAppContainer) {
-                grunt.log.error('Must be in app container directory to manipulate "app" objects.');
-                return false;
-            }
-            
-            if (args[1] === 'create' && (args.length <= 3)) {
-                var done = this.async();
-                
-                askForIfMissing('App name:', args[2], function(appName) {
-                    createApp(appName, done);
-                });
-            } else if (args[1] === 'delete' && (args.length <= 3)) {
-                var done = this.async();
-                
-                askForIfMissing('App name:', args[2], function(appName) {
-                    deleteApp(appName, done);
-                });
-            } else if (args[1] === 'rename' && (args.length <= 4)) {
-                var done = this.async();
-                
-                askForIfMissing('Old app name:', args[2], function(oldAppName) {
-                    askForIfMissing('New app name:', args[3], function(newAppName) {
-                        renameApp(oldAppName, newAppName, done);
-                    });
-                });
-            } else {
-                grunt.log.error('Unrecognized command for "app" object: ' + args[1]);
-                printHelp();
-                return false;
-            }
+            execAppCommand(args, done);
         } else if (args[0] === 'reload') {
-            if (args[1] === 'app' && (args.length === 2)) {
-                if (isInAppContainer) {
-                    grunt.log.error('Must in app directory to perform "reload:app".');
-                    return false;
-                }
-                
-                // Locate splunkd
-                var serviceArgs = grunt.config(['splunk', 'options', 'splunkd']);
-                if (!serviceArgs) {
-                    grunt.log.error('Gruntfile.js: Missing configuration for: splunk.options.splunkd');
-                    return false;
-                }
-                
-                // Locate splunk CLI
-                if (!process.env.SPLUNK_HOME) {
-                    grunt.log.error('SPLUNK_HOME environment variable is not set.');
-                    grunt.log.error('This should be set to the path to your Splunk installation.');
-                    grunt.log.error('For example: export SPLUNK_HOME=/Applications/splunk');
-                    return false;
-                }
-                if (!fs.existsSync(process.env.SPLUNK_HOME) ||
-                    !fs.statSync(process.env.SPLUNK_HOME).isDirectory())
-                {
-                    grunt.log.error('SPLUNK_HOME does not point to a valid directory.');
-                    return false;
-                }
-                var splunkCommandPath = path.join(process.env.SPLUNK_HOME, 'bin', 'splunk');
-                if (!fs.existsSync(splunkCommandPath)) {
-                    grunt.log.error('SPLUNK_HOME does not point to a valid Splunk installation.');
-                    return false;
-                }
-                
-                var done = this.async();
-                
-                // Poke /services/apps/local/_reload
-                var service = new splunkjs.Service(serviceArgs);
-                service.apps().post('_reload', {}, function(err, response) {
-                    if (err) {
-                        done(err);
-                        return;
-                    }
-                    
-                    // Restart splunkweb
-                    child_process.execFile(splunkCommandPath, ['restartss'], {}, done);
-                });
-            } else {
-                grunt.log.error('Unrecognized subcommand for "reload" command: ' + args[1]);
-                printHelp();
-                return false;
-            }
+            execReloadCommand(args, done);
         } else {
             grunt.log.error('Unrecognized object type: ' + args[0]);
             printHelp();
+            done(false);
+            return;
+        }
+    }
+    
+    function execViewCommand(args, done) {
+        if (isInAppContainer()) {
+            grunt.log.error('Must in app directory to manipulate "view" objects.');
+            done(false);
+            return;
+        }
+        
+        if (args[1] === 'create' && (args.length <= 3)) {
+            var viewName;
+            askForIfMissing('View name:', args[2], function(inputViewName) {
+                viewName = inputViewName;
+                askForBaseTemplateName();
+            });
+            
+            function askForBaseTemplateName() {
+                inquirer.prompt({
+                    // NOTE: Using this type instead of 'list' because
+                    //       probably easier to automate externally.
+                    type: 'rawlist',
+                    name: 'baseTemplateName',
+                    message: 'Which base template should be used:',
+                    choices: [
+                        {
+                            name: 'Navigation bar, header, and footer.',
+                            value: 'base_with_app_bar'
+                        }, {
+                            name: 'Header and footer.',
+                            value: 'base_with_account_bar'
+                        }, {
+                            name: 'Blank page.',
+                            value: 'base_with_basic_styles'
+                        }
+                    ],
+                    default: 'base_with_app_bar'
+                }, function(response) {
+                    // Spacer between questions and task output
+                    grunt.log.writeln('');
+                    
+                    createView(viewName, response.baseTemplateName, done);
+                });
+            };
+        } else if (args[1] === 'delete' && (args.length <= 3)) {
+            askForIfMissing('View name:', args[2], function(viewName) {
+                deleteView(viewName, done);
+            });
+        } else if (args[1] === 'rename' && (args.length <= 4)) {
+            askForIfMissing('Old view name:', args[2], function(oldViewName) {
+                askForIfMissing('New view name:', args[3], function(newViewName) {
+                    renameView(oldViewName, newViewName, done);
+                });
+            });
+        } else {
+            grunt.log.error('Unrecognized command for "view" object: ' + args[1]);
+            printHelp();
+            done(false);
+            return;
+        }
+    }
+    
+    function execAppCommand(args, done) {
+        if (!isInAppContainer()) {
+            grunt.log.error('Must be in app container directory to manipulate "app" objects.');
+            done(false);
+            return;
+        }
+        
+        if (args[1] === 'create' && (args.length <= 3)) {
+            askForIfMissing('App name:', args[2], function(appName) {
+                createApp(appName, done);
+            });
+        } else if (args[1] === 'delete' && (args.length <= 3)) {
+            askForIfMissing('App name:', args[2], function(appName) {
+                deleteApp(appName, done);
+            });
+        } else if (args[1] === 'rename' && (args.length <= 4)) {
+            askForIfMissing('Old app name:', args[2], function(oldAppName) {
+                askForIfMissing('New app name:', args[3], function(newAppName) {
+                    renameApp(oldAppName, newAppName, done);
+                });
+            });
+        } else {
+            grunt.log.error('Unrecognized command for "app" object: ' + args[1]);
+            printHelp();
             return false;
         }
-    });
+    }
+    
+    function execReloadCommand(args, done) {
+        if (args[1] === 'app' && (args.length === 2)) {
+            if (isInAppContainer()) {
+                grunt.log.error('Must in app directory to perform "reload:app".');
+                done(false);
+                return;
+            }
+            
+            // Locate splunkd
+            var serviceArgs = grunt.config(['splunk', 'options', 'splunkd']);
+            if (!serviceArgs) {
+                grunt.log.error('Gruntfile.js: Missing configuration for: splunk.options.splunkd');
+                done(false);
+                return;
+            }
+            
+            // Locate splunk CLI
+            if (!process.env.SPLUNK_HOME) {
+                grunt.log.error('SPLUNK_HOME environment variable is not set.');
+                grunt.log.error('This should be set to the path to your Splunk installation.');
+                grunt.log.error('For example: export SPLUNK_HOME=/Applications/splunk');
+                done(false);
+                return;
+            }
+            if (!fs.existsSync(process.env.SPLUNK_HOME) ||
+                !fs.statSync(process.env.SPLUNK_HOME).isDirectory())
+            {
+                grunt.log.error('SPLUNK_HOME does not point to a valid directory.');
+                done(false);
+                return;
+            }
+            var splunkCommandPath = path.join(process.env.SPLUNK_HOME, 'bin', 'splunk');
+            if (!fs.existsSync(splunkCommandPath)) {
+                grunt.log.error('SPLUNK_HOME does not point to a valid Splunk installation.');
+                done(false);
+                return;
+            }
+            
+            // Poke /services/apps/local/_reload
+            var service = new splunkjs.Service(serviceArgs);
+            service.apps().post('_reload', {}, function(err, response) {
+                if (err) {
+                    done(err);
+                    return;
+                }
+                
+                // Restart splunkweb
+                child_process.execFile(splunkCommandPath, ['restartss'], {}, done);
+            });
+        } else {
+            grunt.log.error('Unrecognized subcommand for "reload" command: ' + args[1]);
+            printHelp();
+            done(false);
+            return;
+        }
+    }
 
     /**
      * @param prompt    Message to prompt the user with.
@@ -369,6 +381,11 @@ module.exports = function(grunt) {
     
     // === Utility ===
     
+    function isInAppContainer() {
+        return !!grunt.config(['splunk', 'options', 'appContainer']);
+    }
+    
+    // NOTE: Only gives valid results if not in an app container.
     function getCurrentAppName() {
         return path.basename(process.cwd());
     }
